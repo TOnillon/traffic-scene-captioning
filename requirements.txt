@@ -1,0 +1,9 @@
+transformers
+datasets
+evaluate
+pillow
+torch
+torchvision
+rouge_score
+bleu
+meteor
