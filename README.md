@@ -1,4 +1,4 @@
-# 👁️ Vision-Mentor: Multimodal Image Captioning Pipeline
+# Vision-Mentor: Multimodal Image Captioning Pipeline
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.1.0-EE4C2C.svg?logo=pytorch)](https://pytorch.org/)
 [![Transformers](https://img.shields.io/badge/%F0%9F%A4%97-Transformers-yellow)](https://huggingface.co/docs/transformers/index)
