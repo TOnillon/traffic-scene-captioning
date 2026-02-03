@@ -36,32 +36,22 @@ class TrafficProcessor:
         ])
 
     def preprocess(self, images):
-        """
-        Converts raw images into standardized tensors for the ViT encoder.
-        
-        Args:
-            images (PIL.Image or list): Raw image(s) to process.
-        Returns:
-            torch.Tensor: Normalized pixel values [Batch, Channels, Height, Width].
-        """
         if not isinstance(images, list):
             images = [images]
         
         processed_list = []
         for img in images:
-            # Standardize input to RGB format
+           
             if isinstance(img, str):
-                img = Image.open(img).convert("RGB")
+                curr_img = Image.open(img).convert("RGB")
             else:
-                img = img.convert("RGB")
+                curr_img = img.convert("RGB")
             
-            # Apply augmentations only during the training phase
             if self.is_training:
-                img = self.augmentation(img)
+                curr_img = self.augmentation(curr_img)
                 
-            processed_list.append(img)
-        
-        # Return tensors formatted for PyTorch
+            processed_list.append(curr_img)
+
         return self.imageProcessor(images=processed_list, return_tensors="pt")["pixel_values"]
     
     def decode(self, IDs):

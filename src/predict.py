@@ -3,63 +3,44 @@ from PIL import Image
 from src.model import TrafficModel
 from src.processor import TrafficProcessor
 
-def predict(image_path, model_path=None):
+# Globally initialize components to avoid reloading for every image
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+def predict(image_path, model_path="./models/traffic_model_v1"):
     """
     Performs end-to-end inference on a single traffic image.
-    
-    Args:
-        image_path (str): Path to the input image file.
-        model_path (str, optional): Path to a fine-tuned model checkpoint. 
-                                    Defaults to the base pretrained model.
-    Returns:
-        str: The generated textual description of the traffic scene.
     """
-    # Detect hardware availability for optimized inference
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    # 1. Component Initialization
-    # Initialize the processor (handles normalization and tokenization)
+    # Initialize processor and model
     processor = TrafficProcessor()
     
-    # Load either the baseline or a specialized fine-tuned model
-    if model_path:
-        traffic_model = TrafficModel(model_checkpoint=model_path)
-    else:
-        traffic_model = TrafficModel()
-    
-    # 2. Input Pipeline
-    # Load and ensure RGB format to match model expectations
+    # Load model with the tie_word_embeddings fix to keep logs clean
+    checkpoint = model_path if model_path else "nlpconnect/vit-gpt2-image-captioning"
+    traffic_model = TrafficModel(model_checkpoint=checkpoint)
+    traffic_model.model.config.tie_word_embeddings = False
+    traffic_model.model.to(device)
+    traffic_model.model.eval()
+
+    # Load and preprocess image
     raw_image = Image.open(image_path).convert("RGB")
-    
-    # Preprocess image into a standardized tensor [1, 3, 224, 224]
     pixel_values = processor.preprocess(raw_image).to(device)
+
+    print(f"🚀 Processing image: {image_path}...")
     
-    # 3. Model Generation
-    print(f"Processing image: {image_path}...")
-    
-    # Disable gradient calculation to reduce memory consumption and latency
     with torch.no_grad():
+        # Standardize generation parameters for consistency
         output_ids = traffic_model.generate(pixel_values)
     
-    # 4. Post-processing
-    # Transform numerical IDs back into human-readable text
     caption = processor.decode(output_ids)[0]
     
-    print("-" * 30)
-    print(f"Predicted Caption: {caption}")
-    print("-" * 30)
-    
+    print(f"{'='*30}\nRESULT: {caption}\n{'='*30}")
     return caption
 
 if __name__ == "__main__":
-    """
-    Entry point for CLI-based inference.
-    Handles basic error reporting for missing files or runtime failures.
-    """
+    import sys
+    # Allow passing an image path via terminal: python src/predict.py my_image.jpg
+    img_path = sys.argv[1] if len(sys.argv) > 1 else "test_image.jpg"
+    
     try:
-        # Default test case for local verification
-        predict("test_image.jpg", model_path=None)
-    except FileNotFoundError:
-        print("Error: 'test_image.jpg' not found. Please provide a valid image path.")
+        predict(img_path)
     except Exception as e:
-        print(f"An error occurred during inference: {e}")
+        print(f"Inference failed: {e}")

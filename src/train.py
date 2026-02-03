@@ -6,15 +6,12 @@ from src.model import TrafficModel
 from src.data_loader import TrafficDataLoader
 from src.processor import TrafficProcessor
 
-def train(epochs=3, dataset_name="DamianBoborzi/car_images"):
+def train(epochs=3, dataset_name="lmms-lab/COCO-Caption"):
     """
     Orchestrates the fine-tuning process of the image captioning model.
-    Configures environment, metrics, and training hyperparameters.
+    Handles environment setup, dataset preparation, and training execution.
     """
-    # Set compute device and load base NLP metrics for evaluation
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    # Initialize core components: Architecture, Processor and Data Pipeline
+    # Initialize core components: Architecture, Processor, and Data Pipeline
     traffic_model = TrafficModel()
     processor = TrafficProcessor()
     
@@ -35,14 +32,14 @@ def train(epochs=3, dataset_name="DamianBoborzi/car_images"):
         if isinstance(preds, tuple):
             preds = preds[0]
         
-        # Convert IDs back to strings, ignoring special tokens
+        # Decode predictions and labels into human-readable strings
         decoded_preds = processor.decode(preds)
         
-        # Replace masked label indices (-100) with pad token for decoding
+        # Masked label indices (-100) are replaced by pad tokens for proper decoding
         labels = np.where(labels != -100, labels, processor.tokenizer.pad_token_id)
         decoded_labels = processor.decode(labels)
 
-        # Reformat references for BLEU metric (expects list of lists)
+        # Format references for BLEU (expects a list of lists)
         references = [[l] for l in decoded_labels]
 
         # Compute standard NLP scores
@@ -50,48 +47,50 @@ def train(epochs=3, dataset_name="DamianBoborzi/car_images"):
         bleu_results = bleu_metric.compute(predictions=decoded_preds, references=references)
         meteor_results = meteor_metric.compute(predictions=decoded_preds, references=decoded_labels)
 
+        # Extract scalar values from metric results
         return {
             "rougeL": round(rouge_results["rougeL"], 4),
             "bleu": round(bleu_results["bleu"], 4),
             "meteor": round(meteor_results["meteor"], 4)
         }
 
-    # Define training hyperparameters optimized for local/HPC environments
+    # Training hyperparameters optimized for convergence and stability
     training_args = Seq2SeqTrainingArguments(
         output_dir="./models/traffic_model_v1",
         per_device_train_batch_size=4,
         per_device_eval_batch_size=4,
-        predict_with_generate=True, # Required for generating text during eval
+        predict_with_generate=True,
         eval_strategy="epoch",
         save_strategy="epoch",
-        load_best_model_at_end=True, # Saves the most semantically accurate version
+        load_best_model_at_end=True,
         metric_for_best_model="rougeL",
+        save_total_limit=1,
         logging_steps=10,
-        num_train_epochs=epochs,
-        learning_rate=5e-5, # Standard LR for fine-tuning transformers
-        weight_decay=0.01,  # Regularization to prevent overfitting
-        fp16=torch.cuda.is_available(), # Mixed precision training for GPU speed
-        push_to_hub=False,
-        report_to="none"
+        num_train_epochs=epochs,      
+        learning_rate=2e-5,     
+        weight_decay=0.05,       
+        fp16=torch.cuda.is_available(), # Mixed precision for faster training
+        report_to="tensorboard",
+        logging_dir="./models/traffic_model_v1/runs", # Updated path for TensorBoard
     )
 
-    # Initialize the high-level Trainer API
     trainer = Seq2SeqTrainer(
         model=traffic_model.model,
         args=training_args,
         train_dataset=dataset_dict["train"],
-        eval_dataset=dataset_dict["test"], 
+        eval_dataset=dataset_dict["validation"], 
         data_collator=default_data_collator,
         compute_metrics=compute_metrics,
-        # Stop training if the model stops improving to save resources
         callbacks=[EarlyStoppingCallback(early_stopping_patience=3)]
     )
 
-    # Start the training execution
+    # Start training execution
     trainer.train()
     
-    # Export the final optimized weights for deployment
+    # Save the final optimized weights for inference/deployment
     trainer.save_model("./models/traffic_model_v1_final")
+    
+    return trainer
 
 if __name__ == "__main__":
     train()

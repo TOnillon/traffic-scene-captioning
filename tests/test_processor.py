@@ -11,7 +11,7 @@ def test_preprocess_output_shape():
     fake_image.save(temp_path)
 
 
-    fake_ids = torch.tensor([[50256, 464, 3456, 50256]])
+    fake_ids = torch.tensor([[64, 1097, 319, 262, 2975]])
     fake_text = "a car on the road"
 
 

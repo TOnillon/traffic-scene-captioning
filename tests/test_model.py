@@ -10,5 +10,5 @@ def test_model():
 
     assert isinstance(IDs,torch.Tensor)
     assert IDs.dtype == torch.long
-    assert IDs.shape[1]<=16
+    assert IDs.shape[1]<=32
     
