@@ -24,7 +24,7 @@ def predict(image_path, model_path="./models/traffic_model_v1"):
     raw_image = Image.open(image_path).convert("RGB")
     pixel_values = processor.preprocess(raw_image).to(device)
 
-    print(f"🚀 Processing image: {image_path}...")
+    print(f"Processing image: {image_path}...")
     
     with torch.no_grad():
         # Standardize generation parameters for consistency
